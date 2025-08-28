@@ -1,71 +1,65 @@
 pico-8 cartridge // http://www.pico-8.com
 version 43
 __lua__
+-- suit constants (0-based for sprites)
+HRT, SPD, DIA, CLB = 0,1,2,3
+
+-- rank constants  
+R2,R3,R4,R5,R6 = 2,3,4,5,6
+R7,R8,R9,R10 = 7,8,9,10
+RJ,RQ,RK,RA = 11,12,13,14
+
 stacks = {}
 
-function sprcard(rank,suit,x,y,sm)
- --r: rank (2-13), s: suit (0-3)
- --x: column coord, y: row coord
- -- top/bot sprite offsets
- top_spr = 0
- bot_spr = 16
- if suit & 1 == 1 then -- odd
-  top_spr = 32 -- odd suits...
-  bot_spr = 48 -- ...black
- end
+function spr_card(rank,suit,x,y)
+ --draws 16x24 card sprite
+ --rank: R2-RA, suit: HRT,SPD,DIA,CLB
  
- -- nw & se are ranks
- -- ne & sw are suits
- -- assign rank sprites
-	nw_spr = top_spr + rank
-	se_spr = bot_spr + rank
-
- suit_spr = 0 -- red sprites
- if suit & 1 == 1 then
-  suit_spr = 32 -- black sprites
- end
- -- also diam/club is suit > 1
- if suit > 1 then
- 	suit_spr += 1 -- diamond/club
- end
+ local blk = suit&1==1
+ local rtop = blk and 32 or 0
+ local rbot = blk and 48 or 16
  
- -- assign suit sprites
-	ne_spr = suit_spr
-	sw_spr = suit_spr + 16
-	
-	-- draw all card sprites
-	spr(nw_spr, x,   y)
-	spr(ne_spr, x+8, y)
-	spr(15,     x,   y+8)
-	spr(31,     x+8, y+8)
-	spr(sw_spr, x,   y+16)
-	spr(se_spr, x+8, y+16)
+ local sbase = blk and 32 or 0
+ if suit>1 then sbase+=1 end
+ 
+ -- 2x3 sprite layout:
+ -- [r][s] top
+ -- [15][31] mid
+ -- [s][r] bot
+ 
+ spr(rtop+rank, x,   y)
+ spr(sbase,     x+8, y)
+ spr(15,        x,   y+8)
+ spr(31,        x+8, y+8)
+ spr(sbase+16,  x,   y+16)
+ spr(rbot+rank, x+8, y+16)
 end
 
-function sprcard_st(st)
+function spr_stack(st)
+ --
  if st == nil then
-  st = stacks.stock
+	st = stacks.stock
  end
-	x = 0
-	y = 0 
-	for c in all(st) do
-		if x >= 128 then
-			x = 0
-			y = y + 24
-		end			
-		if y >= 128 then
-			y = 8
-		end
-		sprcard(c.r,c.s,x,y)
-		x += 16
+ x = 0
+ y = 0 
+ for c in all(st) do
+	if x >= 128 then
+	 x = 0
+	 y = y + 24
+	end			
+	if y >= 128 then
+	 y = 8
 	end
-	msg = "num cards: "
-	msg = msg..#stacks.stock
-	print(msg,8,104,4)
+	spr_card(c.r,c.s,x,y)
+	x += 16
+ end
+ msg = "num cards: "
+ msg = msg..#stacks.stock
+ print(msg,8,104,4)
 end
 
-function init_stacks()
- --(re)init stacks global
+function init_st()
+ --(re)init stacks global state
  stacks = {
   stock = {},
   waste = {},
@@ -74,64 +68,66 @@ function init_stacks()
  }
  
  --populate stock w/ all cards
- for s=1,4 do
-  for r=2,14 do
-  	add(stacks.stock, {s=s, r=r})
+ for s=HRT,CLB do
+  for r=R2,RA do
+   add(stacks.stock, {s=s, r=r})
   end
  end
- return deck
 end
 
 function strcard(card)
  if card.r < 10 then
   txt = tostr(card.r)
- elseif card.r == 10 then
+ elseif card.r == R10 then
   txt = "0"
- elseif card.r == 11 then
+ elseif card.r == RJ then
   txt = "j"
- elseif card.r == 12 then
+ elseif card.r == RQ then
   txt = "q"
- elseif card.r == 13 then
+ elseif card.r == RK then
   txt = "k"
- elseif card.r == 14 then
+ elseif card.r == RA then
   txt = "a"
  else
   txt = "bad"
  end
-	if card.s == 0 then
-	 txt = txt.."h"
-	elseif card.s == 1 then
-	 txt = txt.."s"
-	elseif card.s == 2 then
-	 txt = txt.."d"
-	elseif card.s == 3 then
-	 txt = txt.."c"
-	else
-	 txt = txt.."!"
-	end
-	return txt
+ if card.s == HRT then
+  txt = txt.."h"
+ elseif card.s == SPD then
+  txt = txt.."s"
+ elseif card.s == DIA then
+  txt = txt.."d"
+ elseif card.s == CLB then
+  txt = txt.."c"
+ else
+  txt = txt.."!"
+ end
+ return txt
 end
 
-function print_stack(st)
+function print_st(st)
  pt = {0, 0}
-	for c in all(st) do
-	 msg = strcard(c)
-		print(msg, pt[1], pt[2])
-		pt[1] += 16
-		if pt[1] >= 128 then
-		 pt[1] = 0
-		 pt[2] += 16
-		end
-	end
+ for c in all(st) do
+  msg = strcard(c)
+  print(msg, pt[1], pt[2])
+  pt[1] += 16
+  if pt[1] >= 128 then
+   pt[1] = 0
+   pt[2] += 16
+  end
+ end
 end
 
-function sprdeck()
+function spr_deckback()
+ --Draw 2x3 sprs for
+ --turned over stock decks back
  local p = {2, 2}
-	sspr(0,32,16,24,p[1],p[2])
+ sspr(0,32,16,24,p[1],p[2])
 end
 
-function sprmark_found(n)
- --draw 2x3 sprs for ace marks
+function sprfound(n)
+ --draw 2x3 sprs for
+ --found stack markers
  --param n is num of ace mark
  local pad = 2
  local offs= (pad + 16) * n
@@ -139,7 +135,7 @@ function sprmark_found(n)
  sspr(16,32,16,24,p[1],p[2])
 end
 
-function sprmark_tablu(n)
+function sprtablu(n)
  --draw 2x3 sprs for...
  --...frecell markings (0..6)
  local marg = 2 --margin to scr
@@ -150,13 +146,13 @@ function sprmark_tablu(n)
  sspr(16,32,16,24,posx,posy)
 end
 
-function deal(deck)
- sprdeck()
+function spr_init_board()
+ spr_deckback()
  for i=0,3 do
-  sprmark_ace(i)
+  sprfound(i)
  end
  for i=0,6 do
-  sprmark_freecell(i)
+  sprtablu(i)
  end
 end
 
@@ -164,16 +160,16 @@ function shuffle_st(st)
  if st == nil then
   st = stacks.stock
  end
-	local tmp = 0
-	local i = #st
-	local j = 0
-	while i >= 2 do
-	 j = rnd(i)\1 + 1
-	 tmp = st[i]
-	 st[i] = st[j]
-	 st[j] = tmp
-	 i -= 1
-	end
+ local tmp = 0
+ local i = #st
+ local j = 0
+ while i >= 2 do
+  j = rnd(i)\1 + 1
+  tmp = st[i]
+  st[i] = st[j]
+  st[j] = tmp
+  i -= 1
+ end
 end
 
 function _init()
@@ -182,14 +178,15 @@ function _init()
 
  palt(0, false) -- render black
  palt(3, true)  -- d.grn tansp
-	cls(3)         -- clear d.grn
-	-- setup play board
-	init_stacks()
-	sprcard_st()
-	shuffle_st()
-	--sprcard_st(stacks.stock,true)
-	--print("num cards: "..#stacks.stock)
-	--deal(deck)
+ cls(3)         -- clear d.grn
+ -- setup play board
+ init_st()
+ spr_stack() --debug
+ shuffle_st()
+ spr_stack(stacks.stock) --debg
+ print("num cards: "..#stacks.stock)
+ cls(3)
+ spr_init_board()
 end
 
 function _update()
