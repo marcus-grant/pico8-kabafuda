@@ -9,7 +9,17 @@ R2,R3,R4,R5,R6 = 2,3,4,5,6
 R7,R8,R9,R10 = 7,8,9,10
 RJ,RQ,RK,RA = 11,12,13,14
 
+-- layout constants
+TABLU_Y = 28  -- y offset for tableau cards
+
 stacks = {}
+deal_state = {
+ active = false,
+ tablu_idx = 1,   -- current tableau (1-based)
+ card_idx = 0,    -- current card in tableau
+ timer = 0,       -- animation timer
+ delay = 2        -- frames between deals (doubled speed)
+}
 
 function spr_card(rank,suit,x,y)
  --draws 16x24 card sprite
@@ -22,7 +32,7 @@ function spr_card(rank,suit,x,y)
  local sbase = blk and 32 or 0
  if suit>1 then sbase+=1 end
  
- -- 2x3 sprite layout:
+ -- 2x3 sp/rite layout:
  -- [r][s] top
  -- [15][31] mid
  -- [s][r] bot
@@ -70,7 +80,7 @@ function init_st()
  --populate stock w/ all cards
  for s=HRT,CLB do
   for r=R2,RA do
-   add(stacks.stock, {s=s, r=r})
+   add(stacks.stock, {r=r, s=s})
   end
  end
 end
@@ -141,7 +151,7 @@ function sprtablu(n)
  local marg = 2 --margin to scr
  local pad = 2 --between marks 
  local posx = marg
- local posy = 28 --y for all marks
+ local posy = TABLU_Y --y for all marks
  posx += (n * (pad + 16))
  sspr(16,32,16,24,posx,posy)
 end
@@ -156,7 +166,51 @@ function spr_init_board()
  end
 end
 
-function shuffle_st(st)
+function deal_cards()
+ --start dealing animation
+ deal_state.active = true
+ deal_state.tablu_idx = 1
+ deal_state.card_idx = 0
+ deal_state.timer = 0
+end
+
+function update_deal()
+ if not deal_state.active then
+  return
+ end
+ 
+ deal_state.timer += 1
+ if deal_state.timer < deal_state.delay then
+  return
+ end
+ 
+ -- time to deal next card
+ deal_state.timer = 0
+ 
+ -- deal card to current tableau
+ local card = stacks.stock[#stacks.stock]
+ local ti = deal_state.tablu_idx
+ del(stacks.stock, card)
+ add(stacks.tablu[ti], card)
+ 
+ -- move to next card in tableau
+ deal_state.card_idx += 1
+ 
+ -- check if tableau is full
+ local target_count = ti
+ if deal_state.card_idx >= target_count then
+  -- move to next tableau
+  deal_state.tablu_idx += 1
+  deal_state.card_idx = 0
+  
+  -- check if all tableaux dealt
+  if deal_state.tablu_idx > 7 then
+   deal_state.active = false
+  end
+ end
+end
+
+function shuffle_stack(st)
  if st == nil then
   st = stacks.stock
  end
@@ -181,18 +235,39 @@ function _init()
  cls(3)         -- clear d.grn
  -- setup play board
  init_st()
- spr_stack() --debug
- shuffle_st()
- spr_stack(stacks.stock) --debg
- print("num cards: "..#stacks.stock)
- cls(3)
+ shuffle_stack()
+ 
+ -- start dealing animation
+ deal_cards()
+ 
  spr_init_board()
 end
 
 function _update()
+ update_deal()
 end
 
 function _draw()
+ cls(3) -- clear to dark green
+ spr_init_board() -- redraw board each frame
+ 
+ -- draw dealt cards in tableaux
+ for i=1,7 do
+  local tablu = stacks.tablu[i]
+  if #tablu > 0 then
+   for j=1,#tablu do
+    local card = tablu[j]
+    local x = 2 + (i-1) * 18
+    local y = TABLU_Y + ((j-1) << 3)
+    spr_card(card.r, card.s, x, y)
+   end
+  end
+ end
+ 
+ -- show stock count
+ if #stacks.stock > 0 then
+  print(#stacks.stock, 6, 8, 7)
+ end
 end
 __gfx__
 55555533555555333355555533555555335555553355555533555555335555553355555533555555335555553355555533555555335555553355555557777777
