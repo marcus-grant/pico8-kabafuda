@@ -1,7 +1,7 @@
 pico-8 cartridge // http://www.pico-8.com
 version 43
 __lua__
--- tab0: main loop and initialization
+-- tab0: main
 
 -- layout constants
 TABLU_Y = 28 --yofset tablu part
@@ -11,11 +11,11 @@ function _init()
  yoff_card = 24
 
  palt(0, false) -- render black
- palt(3, true)  -- d.grn tansp
+ palt(3, true)  -- d.grn transp.
  cls(3)         -- clear d.grn
  -- setup play board
- init_st()
- shuffle_stack()
+ init_gm()
+ shuffle()
  
  -- start dealing animation
  deal_cards()
@@ -25,40 +25,41 @@ end
 
 function _update()
  update_deal()
- -- only allow cursor movement after dealing is complete
- if not deal_state.active then
-  update_cursor()
+ -- only allow cursor movement
+ -- ...after dealing is complete
+ if not anim.active then
+  update_crs()
  end
 end
 
 function _draw()
  cls(3) -- clear to dark green
- spr_init_board() -- redraw board each frame
+ spr_init_board()--redraw board each frame
  
  -- draw dealt cards in tableaux
  for i=1,7 do
-  local tablu = stacks.tablu[i]
-  if #tablu > 0 then
-   for j=1,#tablu do
-    local card = tablu[j]
+  local tbl = sts.tbl[i]
+  if #tbl > 0 then
+   for j=1,#tbl do
+    local c = tbl[j]--tbl card
     local x = 2 + (i-1) * 18
-    local y = TABLU_Y + ((j-1) << 3)
-    spr_card(card.r, card.s, x, y)
+    local y=TABLU_Y+((j-1) << 3)
+    spr_card(c.r, c.s, x, y)
    end
   end
  end
  
  -- show stock count
- if #stacks.stock > 0 then
-  print(#stacks.stock, 6, 8, 7)
+ if #sts.sto > 0 then
+  print(#sts.sto, 6, 8, 7)
  end
  
  -- draw cursor
- draw_cursor()
+ draw_crs()
 end
 
 -->8
--- tab1: game state and data structures
+-- tab1: state
 
 -- suit constants (0-based for sprites)
 HRT, SPD, DIA, CLB = 0,1,2,3
@@ -69,87 +70,87 @@ R7,R8,R9,R10 = 7,8,9,10
 RJ,RQ,RK,RA = 11,12,13,14
 
 -- cursor state
-cursor = {
- area = "tablu",  -- "tablu" or "top" (stock/waste/foundations)
- tablu_idx = 1,   -- which tableau (1-7)
- card_idx = 1,    -- which card in tableau (1=top face-up card)
- top_pos = 0,     -- 0=stock, 1=waste, 2-5=foundations
- selected = false -- whether cards are selected
+crs = {--vvv--(stock/waste/foundations)
+ area = "tbl",--tbl|top ^^^
+ tbl_i = 1,   --which tableau(1-7)
+ card_i = 1,  --which tableau card?(1=top face-up card)
+ top_pos = 0, --0=stock, 1=waste, 2-5=foundations
+ selected = false--card sel?
 }
 
-stacks = {}
-deal_state = {
+sts = {}
+anim = {
  active = false,
- tablu_idx = 1,   -- current tableau (1-based)
- card_idx = 0,    -- current card in tableau
- timer = 0,       -- animation timer
- delay = 2        -- frames between deals (doubled speed)
+ tbl_i = 1, --curr. tableau (1-based)
+ card_i = 0,--curr. card in tableau
+ timer = 0, --animation timer
+ delay = 1  --frames btwn deals 
 }
 
-function init_st()
+function init_gm()
  --(re)init stacks global state
- stacks = {
-  stock = {},
+ sts = {
+  sto = {},
   waste = {},
-  found = {{}, {}, {}, {}},
-  tablu = {{}, {}, {}, {}, {}, {}, {}}
+  fnd = {{}, {}, {}, {}},
+  tbl={{},{},{},{},{},{},{}}
  }
  
  --populate stock w/ all cards
  for s=HRT,CLB do
   for r=R2,RA do
-   add(stacks.stock, {r=r, s=s})
+   add(sts.sto, {r=r, s=s})
   end
  end
 end
 
 function deal_cards()
  --start dealing animation
- deal_state.active = true
- deal_state.tablu_idx = 1
- deal_state.card_idx = 0
- deal_state.timer = 0
+ anim.active = true
+ anim.tbl_i = 1
+ anim.card_i = 0
+ anim.timer = 0
 end
 
 function update_deal()
- if not deal_state.active then
+ if not anim.active then
   return
  end
  
- deal_state.timer += 1
- if deal_state.timer < deal_state.delay then
+ anim.timer += 1
+ if anim.timer < anim.delay then
   return
  end
  
  -- time to deal next card
- deal_state.timer = 0
+ anim.timer = 0
  
  -- deal card to current tableau
- local card = stacks.stock[#stacks.stock]
- local ti = deal_state.tablu_idx
- del(stacks.stock, card)
- add(stacks.tablu[ti], card)
+ local card = sts.sto[#sts.sto]
+ local ti = anim.tbl_i
+ del(sts.sto, card)
+ add(sts.tbl[ti], card)
  
  -- move to next card in tableau
- deal_state.card_idx += 1
+ anim.card_i += 1
  
  -- check if tableau is full
- local target_count = ti
- if deal_state.card_idx >= target_count then
+ local tbl_totl = ti
+ if anim.card_i >= tbl_totl then
   -- move to next tableau
-  deal_state.tablu_idx += 1
-  deal_state.card_idx = 0
+  anim.tbl_i += 1
+  anim.card_i = 0
   
   -- check if all tableaux dealt
-  if deal_state.tablu_idx > 7 then
-   deal_state.active = false
+  if anim.tbl_i > 7 then
+   anim.active = false
   end
  end
 end
 
-function shuffle_stack(st)
+function shuffle(st)
  if st == nil then
-  st = stacks.stock
+  st = sts.sto
  end
  local tmp = 0
  local i = #st
@@ -168,7 +169,7 @@ end
 
 function spr_card(rank,suit,x,y)
  --draws 2x3 card sprite
- --rank:R2-RA,suit: HRT,SPD,DIA,CLB
+ --rank:R2-RA,suit:HRT,SPD,DIA,CLB
  
  local blk = suit&1==1
  local rtop = blk and 32 or 0
@@ -180,8 +181,7 @@ function spr_card(rank,suit,x,y)
  -- 2x3 sp/rite layout:
  -- [r][s] top
  -- [15][31] mid
- -- [s][r] bot
- 
+ -- [s][r] bot 
  spr(rtop+rank, x,   y)
  spr(sbase,     x+8, y)
  spr(15,        x,   y+8)
@@ -190,10 +190,10 @@ function spr_card(rank,suit,x,y)
  spr(rbot+rank, x+8, y+16)
 end
 
-function spr_stack(st)
+function spr_st(st)
  --
  if st == nil then
-	st = stacks.stock
+	st = sts.sto
  end
  x = 0
  y = 0 
@@ -209,7 +209,7 @@ function spr_stack(st)
 	x += 16
  end
  msg = "num cards: "
- msg = msg..#stacks.stock
+ msg = msg..#sts.sto
  print(msg,8,104,4)
 end
 
@@ -263,7 +263,7 @@ function spr_deckback()
  sspr(0,32,16,24,p[1],p[2])
 end
 
-function sprfound(n)
+function sprfnd(n)
  --draw 2x3 sprs for
  --found stack markers
  --param n is num of ace mark
@@ -273,13 +273,13 @@ function sprfound(n)
  sspr(16,32,16,24,p[1],p[2])
 end
 
-function sprtablu(n)
+function sprtbl(n)
  --draw 2x3 sprs for...
  --...frecell markings (0..6)
  local marg = 2 --margin to scr
  local pad = 2 --between marks 
  local posx = marg
- local posy = TABLU_Y --y for all marks
+ local posy = TABLU_Y --all marks
  posx += (n * (pad + 16))
  sspr(16,32,16,24,posx,posy)
 end
@@ -287,118 +287,147 @@ end
 function spr_init_board()
  spr_deckback()
  for i=0,3 do
-  sprfound(i)
+  sprfnd(i)
  end
  for i=0,6 do
-  sprtablu(i)
+  sprtbl(i)
  end
 end
 
 -->8
 -- tab3: input
 
-function update_cursor()
- -- handle cursor movement with d-pad
+function update_crs()
+ -- handle cursor movement w/ dpad
  if btnp(0) then -- left
-  move_cursor_left()
+  move_crs_left()
  elseif btnp(1) then -- right
-  move_cursor_right()
+  move_crs_right()
  elseif btnp(2) then -- up
-  move_cursor_up()
+  move_crs_up()
  elseif btnp(3) then -- down
-  move_cursor_down()
+  move_crs_down()
  end
 end
 
-function move_cursor_left()
- if cursor.area == "tablu" then
-  cursor.tablu_idx = max(1, cursor.tablu_idx - 1)
-  local tablu = stacks.tablu[cursor.tablu_idx]
-  cursor.card_idx = #tablu > 0 and #tablu or 1 -- reset to top card (last in table)
- elseif cursor.area == "top" then
-  cursor.top_pos = max(0, cursor.top_pos - 1)
+function move_crs_left()
+ if crs.area == "tbl" then
+  crs.tbl_i -= 1
+  if crs.tbl_i < 1 then
+   crs.tbl_i = 1
+  end
+  local tbl = sts.tbl[crs.tbl_i]
+  crs.card_i = 1
+  if #tbl > 0 then
+   crs.card_i = #tbl
+  end
+ elseif crs.area == "top" then
+  crs.top_pos -= 1
+  if crs.top_pos < 0 then
+   crs.top_pos = 0
+  end
  end
 end
 
-function move_cursor_right()
- if cursor.area == "tablu" then
-  cursor.tablu_idx = min(7, cursor.tablu_idx + 1)
-  local tablu = stacks.tablu[cursor.tablu_idx]
-  cursor.card_idx = #tablu > 0 and #tablu or 1 -- reset to top card (last in table)
- elseif cursor.area == "top" then
-  cursor.top_pos = min(5, cursor.top_pos + 1)
+function move_crs_right()
+ if crs.area == "tbl" then
+  crs.tbl_i += 1
+  if crs.tbl_i > 7 then
+   crs.tbl_i = 7
+  end
+  local tbl = sts.tbl[crs.tbl_i]
+  crs.card_i = 1
+  if #tbl > 0 then
+   crs.card_i = #tbl
+  end
+ elseif crs.area == "top" then
+  crs.top_pos += 1
+  if crs.top_pos > 5 then
+   crs.top_pos = 5
+  end
  end
 end
 
-function move_cursor_up()
- if cursor.area == "tablu" then
-  local tablu = stacks.tablu[cursor.tablu_idx]
-  if #tablu == 0 then
-   -- empty tableau, go to top area
-   cursor.area = "top"
-   cursor.top_pos = 0
-  elseif cursor.card_idx == 1 then
-   -- at first card (top visually), go to top area
-   cursor.area = "top"
-   cursor.top_pos = 0
+function move_crs_up()
+ if crs.area == "tbl" then
+  local tbl = sts.tbl[crs.tbl_i]
+  if #tbl == 0 then
+   crs.area = "top"
+   crs.top_pos = 0
+  elseif crs.card_i == 1 then
+   crs.area = "top"
+   crs.top_pos = 0
   else
-   -- move up visually (towards lower index, higher Y position)
-   cursor.card_idx = max(1, cursor.card_idx - 1)
+   crs.card_i -= 1
+   if crs.card_i < 1 then
+    crs.card_i = 1
+   end
   end
- end
- -- if already in top area, stay there
-end
-
-function move_cursor_down()
- if cursor.area == "top" then
-  -- move to tableau area
-  cursor.area = "tablu"
-  local tablu = stacks.tablu[cursor.tablu_idx]
-  cursor.card_idx = #tablu > 0 and #tablu or 1 -- go to bottom card (last in table)
- elseif cursor.area == "tablu" then
-  local tablu = stacks.tablu[cursor.tablu_idx]
-  if #tablu == 0 then
-   return -- can't move down in empty tableau
-  end
-  
-  -- move down visually (towards higher index, lower Y position)
-  cursor.card_idx = min(#tablu, cursor.card_idx + 1)
  end
 end
 
-function draw_cursor()
- -- TODO: replace rect with cursor sprite when available
- -- draws 16x24 cursor rectangle at current position
- local x, y = get_cursor_pos()
- local color = cursor.selected and 2 or 9 -- dark purple if selected, orange if not
+function move_crs_down()
+ if crs.area == "top" then
+  crs.area = "tbl"
+  local tbl = sts.tbl[crs.tbl_i]
+  crs.card_i = 1
+  if #tbl > 0 then
+   crs.card_i = #tbl
+  end
+ elseif crs.area == "tbl" then
+  local tbl = sts.tbl[crs.tbl_i]
+  if #tbl == 0 then
+   return
+  end
+  crs.card_i += 1
+  if crs.card_i > #tbl then
+   crs.card_i = #tbl
+  end
+ end
+end
+
+function draw_crs()
+ --TODO: replace rect with
+ --cursor sprite when avail.
+ --draws 2x3 cursor rectangle
+ --@ current position
+ local x, y = get_crs_pos()
+ local color = 9 -- orange
+ if crs.selected then --if selct
+  color = 2 --...d.purple
+ end
  rect(x, y, x+15, y+23, color)
 end
 
-function get_cursor_pos()
- if cursor.area == "top" then
-  if cursor.top_pos == 0 then
+function get_crs_pos()
+ if crs.area == "top" then
+  if crs.top_pos == 0 then
    -- stock position
    return 2, 2
-  elseif cursor.top_pos == 1 then
-   -- waste position (next to stock)
+  elseif crs.top_pos == 1 then
+   --waste pos. (next to stock)
    return 20, 2
   else
-   -- foundation position (2-5 maps to foundations 1-4)
-   local foundation_idx = cursor.top_pos - 2
+   -- foundation position
+   -- (2-5 to foundations 1-4)
+   local fnd_i = crs.top_pos - 2
    local pad = 2
-   local offs = (pad + 16) * foundation_idx
+   local offs = (pad+16) * fnd_i
    return 56 + offs, 2
   end
  else
   -- tableau position
-  local x = 2 + (cursor.tablu_idx - 1) * 18
-  local tablu = stacks.tablu[cursor.tablu_idx]
-  if #tablu == 0 then
-   -- empty tableau, position at tableau mark
+  local x = 2
+  x += (crs.tbl_i - 1) * 18
+  local tbl = sts.tbl[crs.tbl_i]
+  if #tbl == 0 then
+   -- empty tableau,
+   -- position at tableau mark
    return x, TABLU_Y
   else
    -- position at selected card
-   local y = TABLU_Y + ((cursor.card_idx - 1) << 3)
+   local y = TABLU_Y
+   y += (crs.card_i-1) << 3
    return x, y
   end
  end
