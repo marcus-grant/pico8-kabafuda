@@ -12,6 +12,15 @@ RJ,RQ,RK,RA = 11,12,13,14
 -- layout constants
 TABLU_Y = 28  -- y offset for tableau cards
 
+-- cursor state
+cursor = {
+ area = "tablu",  -- "tablu" or "top" (stock/waste/foundations)
+ tablu_idx = 1,   -- which tableau (1-7)
+ card_idx = 1,    -- which card in tableau (1=top face-up card)
+ top_pos = 0,     -- 0=stock, 1=waste, 2-5=foundations
+ selected = false -- whether cards are selected
+}
+
 stacks = {}
 deal_state = {
  active = false,
@@ -245,6 +254,79 @@ end
 
 function _update()
  update_deal()
+ -- only allow cursor movement after dealing is complete
+ if not deal_state.active then
+  update_cursor()
+ end
+end
+
+function update_cursor()
+ -- handle cursor movement with d-pad
+ if btnp(0) then -- left
+  move_cursor_left()
+ elseif btnp(1) then -- right
+  move_cursor_right()
+ elseif btnp(2) then -- up
+  move_cursor_up()
+ elseif btnp(3) then -- down
+  move_cursor_down()
+ end
+end
+
+function move_cursor_left()
+ if cursor.area == "tablu" then
+  cursor.tablu_idx = max(1, cursor.tablu_idx - 1)
+  local tablu = stacks.tablu[cursor.tablu_idx]
+  cursor.card_idx = #tablu > 0 and #tablu or 1 -- reset to top card (last in table)
+ elseif cursor.area == "top" then
+  cursor.top_pos = max(0, cursor.top_pos - 1)
+ end
+end
+
+function move_cursor_right()
+ if cursor.area == "tablu" then
+  cursor.tablu_idx = min(7, cursor.tablu_idx + 1)
+  local tablu = stacks.tablu[cursor.tablu_idx]
+  cursor.card_idx = #tablu > 0 and #tablu or 1 -- reset to top card (last in table)
+ elseif cursor.area == "top" then
+  cursor.top_pos = min(5, cursor.top_pos + 1)
+ end
+end
+
+function move_cursor_up()
+ if cursor.area == "tablu" then
+  local tablu = stacks.tablu[cursor.tablu_idx]
+  if #tablu == 0 then
+   -- empty tableau, go to top area
+   cursor.area = "top"
+   cursor.top_pos = 0
+  elseif cursor.card_idx == 1 then
+   -- at first card (top visually), go to top area
+   cursor.area = "top"
+   cursor.top_pos = 0
+  else
+   -- move up visually (towards lower index, higher Y position)
+   cursor.card_idx = max(1, cursor.card_idx - 1)
+  end
+ end
+ -- if already in top area, stay there
+end
+
+function move_cursor_down()
+ if cursor.area == "top" then
+  -- move to tableau area
+  cursor.area = "tablu"
+  local tablu = stacks.tablu[cursor.tablu_idx]
+  cursor.card_idx = #tablu > 0 and #tablu or 1 -- go to bottom card (last in table)
+ elseif cursor.area == "tablu" then
+  local tablu = stacks.tablu[cursor.tablu_idx]
+  if #tablu == 0 then
+   return -- can't move down in empty tableau
+  end
+  
+  -- move down visually (towards higher index, lower Y position)
+  cursor.card_idx = min(#tablu, cursor.card_idx + 1)
+ end
 end
 
 function _draw()
@@ -267,6 +349,47 @@ function _draw()
  -- show stock count
  if #stacks.stock > 0 then
   print(#stacks.stock, 6, 8, 7)
+ end
+ 
+ -- draw cursor
+ draw_cursor()
+end
+
+function draw_cursor()
+ -- TODO: replace rect with cursor sprite when available
+ -- draws 16x24 cursor rectangle at current position
+ local x, y = get_cursor_pos()
+ local color = cursor.selected and 2 or 9 -- dark purple if selected, orange if not
+ rect(x, y, x+15, y+23, color)
+end
+
+function get_cursor_pos()
+ if cursor.area == "top" then
+  if cursor.top_pos == 0 then
+   -- stock position
+   return 2, 2
+  elseif cursor.top_pos == 1 then
+   -- waste position (next to stock)
+   return 20, 2
+  else
+   -- foundation position (2-5 maps to foundations 1-4)
+   local foundation_idx = cursor.top_pos - 2
+   local pad = 2
+   local offs = (pad + 16) * foundation_idx
+   return 56 + offs, 2
+  end
+ else
+  -- tableau position
+  local x = 2 + (cursor.tablu_idx - 1) * 18
+  local tablu = stacks.tablu[cursor.tablu_idx]
+  if #tablu == 0 then
+   -- empty tableau, position at tableau mark
+   return x, TABLU_Y
+  else
+   -- position at selected card
+   local y = TABLU_Y + ((cursor.card_idx - 1) << 3)
+   return x, y
+  end
  end
 end
 __gfx__
