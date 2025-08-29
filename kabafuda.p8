@@ -1,7 +1,7 @@
 pico-8 cartridge // http://www.pico-8.com
 version 43
 __lua__
--- tab0: main
+-- tab0: main&init
 
 -- layout constants
 TABLU_Y = 28 --yofset tablu part
@@ -73,7 +73,7 @@ RJ,RQ,RK,RA = 11,12,13,14
 crs = {--vvv--(stock/waste/foundations)
  area = "tbl",--tbl|top ^^^
  tbl_i = 1,   --which tableau(1-7)
- card_i = 1,  --which tableau card?(1=top face-up card)
+ sel_cnt = 1, --cards selected from top
  top_pos = 0, --0=stock, 1=waste, 2-5=foundations
  selected = false--card sel?
 }
@@ -164,6 +164,42 @@ function shuffle(st)
  end
 end
 
+function valid_tablu(st,cnt)
+ --whether 'cnt' cards from
+ --top of stack 'st' obeys
+ --solitaire ordering rules
+ --ie interleaves red/black
+ --{in/de}creases by one each
+ --stacks of 1 or 0 cards are not valid
+ if #st < 2 or cnt < 2 then
+  return false --todo: maybe allow?
+ end
+ local i = #st
+ local min_i = max(2, i - cnt + 2)
+ 
+ while i >= min_i do
+  --cc: curr. card, lc: lower
+  local cc, lc = st[i], st[i-1]
+  
+  if (cc.r + 1) != lc.r then
+   return false
+  end
+  
+  --todo:should is_blk be a fn?
+  --cb: curr. is black
+  --lb: lower is black
+  local cb = (cc.s & 1) == 1
+  local lb = (lc.s & 1) == 1
+  
+  if cb == lb then--if same,
+   return false --color same
+  end--not valid tableu seq.
+  i -= 1
+ end
+ 
+ --gone thru stack or range
+ return true -- its valid
+end
 -->8
 -- tab2: draw
 
@@ -181,7 +217,8 @@ function spr_card(rank,suit,x,y)
  -- 2x3 sp/rite layout:
  -- [r][s] top
  -- [15][31] mid
- -- [s][r] bot 
+ -- [s][r] bot
+ 
  spr(rtop+rank, x,   y)
  spr(sbase,     x+8, y)
  spr(15,        x,   y+8)
@@ -317,10 +354,7 @@ function move_crs_left()
    crs.tbl_i = 1
   end
   local tbl = sts.tbl[crs.tbl_i]
-  crs.card_i = 1
-  if #tbl > 0 then
-   crs.card_i = #tbl
-  end
+  crs.sel_cnt = 1
  elseif crs.area == "top" then
   crs.top_pos -= 1
   if crs.top_pos < 0 then
@@ -336,10 +370,7 @@ function move_crs_right()
    crs.tbl_i = 7
   end
   local tbl = sts.tbl[crs.tbl_i]
-  crs.card_i = 1
-  if #tbl > 0 then
-   crs.card_i = #tbl
-  end
+  crs.sel_cnt = 1
  elseif crs.area == "top" then
   crs.top_pos += 1
   if crs.top_pos > 5 then
@@ -350,17 +381,21 @@ end
 
 function move_crs_up()
  if crs.area == "tbl" then
-  local tbl = sts.tbl[crs.tbl_i]
+  local tbl=sts.tbl[crs.tbl_i]
   if #tbl == 0 then
    crs.area = "top"
    crs.top_pos = 0
-  elseif crs.card_i == 1 then
-   crs.area = "top"
-   crs.top_pos = 0
   else
-   crs.card_i -= 1
-   if crs.card_i < 1 then
-    crs.card_i = 1
+   --try to expand selection
+   local new_cnt=crs.sel_cnt+1
+   if valid_tablu(tbl,new_cnt) 
+   then
+    crs.sel_cnt = new_cnt
+   else
+    --can't expand,move to top
+    crs.area = "top"
+    crs.top_pos = 0
+    crs.sel_cnt = 1
    end
   end
  end
@@ -370,18 +405,15 @@ function move_crs_down()
  if crs.area == "top" then
   crs.area = "tbl"
   local tbl = sts.tbl[crs.tbl_i]
-  crs.card_i = 1
-  if #tbl > 0 then
-   crs.card_i = #tbl
-  end
+  crs.sel_cnt = 1
  elseif crs.area == "tbl" then
   local tbl = sts.tbl[crs.tbl_i]
   if #tbl == 0 then
    return
   end
-  crs.card_i += 1
-  if crs.card_i > #tbl then
-   crs.card_i = #tbl
+  --reduce selection to 1
+  if crs.sel_cnt > 1 then
+   crs.sel_cnt -= 1
   end
  end
 end
@@ -389,14 +421,18 @@ end
 function draw_crs()
  --TODO: replace rect with
  --cursor sprite when avail.
- --draws 2x3 cursor rectangle
- --@ current position
+ --draws expanding cursor
  local x, y = get_crs_pos()
  local color = 9 -- orange
  if crs.selected then --if selct
   color = 2 --...d.purple
  end
- rect(x, y, x+15, y+23, color)
+ local h = 23 -- base height
+ if crs.area == "tbl" then
+  --expand height for selection
+  h += (crs.sel_cnt-1) << 3
+ end
+ rect(x, y, x+15, y+h, color)
 end
 
 function get_crs_pos()
@@ -425,9 +461,10 @@ function get_crs_pos()
    -- position at tableau mark
    return x, TABLU_Y
   else
-   -- position at selected card
+   --position at bottom of sel
    local y = TABLU_Y
-   y += (crs.card_i-1) << 3
+   local bot_i=#tbl-crs.sel_cnt
+   y += bot_i << 3
    return x, y
   end
  end
