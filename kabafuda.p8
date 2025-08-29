@@ -1,6 +1,65 @@
 pico-8 cartridge // http://www.pico-8.com
 version 43
 __lua__
+-- tab0: main loop and initialization
+
+-- layout constants
+TABLU_Y = 28 --yofset tablu part
+
+function _init()
+ xoff_card = 16
+ yoff_card = 24
+
+ palt(0, false) -- render black
+ palt(3, true)  -- d.grn tansp
+ cls(3)         -- clear d.grn
+ -- setup play board
+ init_st()
+ shuffle_stack()
+ 
+ -- start dealing animation
+ deal_cards()
+ 
+ spr_init_board()
+end
+
+function _update()
+ update_deal()
+ -- only allow cursor movement after dealing is complete
+ if not deal_state.active then
+  update_cursor()
+ end
+end
+
+function _draw()
+ cls(3) -- clear to dark green
+ spr_init_board() -- redraw board each frame
+ 
+ -- draw dealt cards in tableaux
+ for i=1,7 do
+  local tablu = stacks.tablu[i]
+  if #tablu > 0 then
+   for j=1,#tablu do
+    local card = tablu[j]
+    local x = 2 + (i-1) * 18
+    local y = TABLU_Y + ((j-1) << 3)
+    spr_card(card.r, card.s, x, y)
+   end
+  end
+ end
+ 
+ -- show stock count
+ if #stacks.stock > 0 then
+  print(#stacks.stock, 6, 8, 7)
+ end
+ 
+ -- draw cursor
+ draw_cursor()
+end
+
+-->8
+-- tab1: game state and data structures
+
 -- suit constants (0-based for sprites)
 HRT, SPD, DIA, CLB = 0,1,2,3
 
@@ -8,9 +67,6 @@ HRT, SPD, DIA, CLB = 0,1,2,3
 R2,R3,R4,R5,R6 = 2,3,4,5,6
 R7,R8,R9,R10 = 7,8,9,10
 RJ,RQ,RK,RA = 11,12,13,14
-
--- layout constants
-TABLU_Y = 28  -- y offset for tableau cards
 
 -- cursor state
 cursor = {
@@ -30,9 +86,89 @@ deal_state = {
  delay = 2        -- frames between deals (doubled speed)
 }
 
+function init_st()
+ --(re)init stacks global state
+ stacks = {
+  stock = {},
+  waste = {},
+  found = {{}, {}, {}, {}},
+  tablu = {{}, {}, {}, {}, {}, {}, {}}
+ }
+ 
+ --populate stock w/ all cards
+ for s=HRT,CLB do
+  for r=R2,RA do
+   add(stacks.stock, {r=r, s=s})
+  end
+ end
+end
+
+function deal_cards()
+ --start dealing animation
+ deal_state.active = true
+ deal_state.tablu_idx = 1
+ deal_state.card_idx = 0
+ deal_state.timer = 0
+end
+
+function update_deal()
+ if not deal_state.active then
+  return
+ end
+ 
+ deal_state.timer += 1
+ if deal_state.timer < deal_state.delay then
+  return
+ end
+ 
+ -- time to deal next card
+ deal_state.timer = 0
+ 
+ -- deal card to current tableau
+ local card = stacks.stock[#stacks.stock]
+ local ti = deal_state.tablu_idx
+ del(stacks.stock, card)
+ add(stacks.tablu[ti], card)
+ 
+ -- move to next card in tableau
+ deal_state.card_idx += 1
+ 
+ -- check if tableau is full
+ local target_count = ti
+ if deal_state.card_idx >= target_count then
+  -- move to next tableau
+  deal_state.tablu_idx += 1
+  deal_state.card_idx = 0
+  
+  -- check if all tableaux dealt
+  if deal_state.tablu_idx > 7 then
+   deal_state.active = false
+  end
+ end
+end
+
+function shuffle_stack(st)
+ if st == nil then
+  st = stacks.stock
+ end
+ local tmp = 0
+ local i = #st
+ local j = 0
+ while i >= 2 do
+  j = rnd(i)\1 + 1
+  tmp = st[i]
+  st[i] = st[j]
+  st[j] = tmp
+  i -= 1
+ end
+end
+
+-->8
+-- tab2: draw
+
 function spr_card(rank,suit,x,y)
- --draws 16x24 card sprite
- --rank: R2-RA, suit: HRT,SPD,DIA,CLB
+ --draws 2x3 card sprite
+ --rank:R2-RA,suit: HRT,SPD,DIA,CLB
  
  local blk = suit&1==1
  local rtop = blk and 32 or 0
@@ -75,23 +211,6 @@ function spr_stack(st)
  msg = "num cards: "
  msg = msg..#stacks.stock
  print(msg,8,104,4)
-end
-
-function init_st()
- --(re)init stacks global state
- stacks = {
-  stock = {},
-  waste = {},
-  found = {{}, {}, {}, {}},
-  tablu = {{}, {}, {}, {}, {}, {}, {}}
- }
- 
- --populate stock w/ all cards
- for s=HRT,CLB do
-  for r=R2,RA do
-   add(stacks.stock, {r=r, s=s})
-  end
- end
 end
 
 function strcard(card)
@@ -175,90 +294,8 @@ function spr_init_board()
  end
 end
 
-function deal_cards()
- --start dealing animation
- deal_state.active = true
- deal_state.tablu_idx = 1
- deal_state.card_idx = 0
- deal_state.timer = 0
-end
-
-function update_deal()
- if not deal_state.active then
-  return
- end
- 
- deal_state.timer += 1
- if deal_state.timer < deal_state.delay then
-  return
- end
- 
- -- time to deal next card
- deal_state.timer = 0
- 
- -- deal card to current tableau
- local card = stacks.stock[#stacks.stock]
- local ti = deal_state.tablu_idx
- del(stacks.stock, card)
- add(stacks.tablu[ti], card)
- 
- -- move to next card in tableau
- deal_state.card_idx += 1
- 
- -- check if tableau is full
- local target_count = ti
- if deal_state.card_idx >= target_count then
-  -- move to next tableau
-  deal_state.tablu_idx += 1
-  deal_state.card_idx = 0
-  
-  -- check if all tableaux dealt
-  if deal_state.tablu_idx > 7 then
-   deal_state.active = false
-  end
- end
-end
-
-function shuffle_stack(st)
- if st == nil then
-  st = stacks.stock
- end
- local tmp = 0
- local i = #st
- local j = 0
- while i >= 2 do
-  j = rnd(i)\1 + 1
-  tmp = st[i]
-  st[i] = st[j]
-  st[j] = tmp
-  i -= 1
- end
-end
-
-function _init()
- xoff_card = 16
- yoff_card = 24
-
- palt(0, false) -- render black
- palt(3, true)  -- d.grn tansp
- cls(3)         -- clear d.grn
- -- setup play board
- init_st()
- shuffle_stack()
- 
- -- start dealing animation
- deal_cards()
- 
- spr_init_board()
-end
-
-function _update()
- update_deal()
- -- only allow cursor movement after dealing is complete
- if not deal_state.active then
-  update_cursor()
- end
-end
+-->8
+-- tab3: input
 
 function update_cursor()
  -- handle cursor movement with d-pad
@@ -327,32 +364,6 @@ function move_cursor_down()
   -- move down visually (towards higher index, lower Y position)
   cursor.card_idx = min(#tablu, cursor.card_idx + 1)
  end
-end
-
-function _draw()
- cls(3) -- clear to dark green
- spr_init_board() -- redraw board each frame
- 
- -- draw dealt cards in tableaux
- for i=1,7 do
-  local tablu = stacks.tablu[i]
-  if #tablu > 0 then
-   for j=1,#tablu do
-    local card = tablu[j]
-    local x = 2 + (i-1) * 18
-    local y = TABLU_Y + ((j-1) << 3)
-    spr_card(card.r, card.s, x, y)
-   end
-  end
- end
- 
- -- show stock count
- if #stacks.stock > 0 then
-  print(#stacks.stock, 6, 8, 7)
- end
- 
- -- draw cursor
- draw_cursor()
 end
 
 function draw_cursor()
