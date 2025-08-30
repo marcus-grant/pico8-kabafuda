@@ -75,7 +75,7 @@ function _draw()
  end
  
  -- show stock count
- if #sts.sto > 0 then
+ if #sts.sto > 1 then
   print(#sts.sto, 6, 8, 7)
  end
  
@@ -339,11 +339,16 @@ function print_st(st)
  end
 end
 
-function spr_deckback()
- --Draw 2x3 sprs for
- --turned over stock decks back
+function spr_sto(is_sto)
+ --Draw stock area sprite
  local p = {2, 2}
- sspr(0,32,16,24,p[1],p[2])
+ if is_sto then
+  --draw card back for stock
+  sspr(0,32,16,24,p[1],p[2])
+ else
+  --draw empty slot marker
+  sspr(16,32,16,24,p[1],p[2])
+ end
 end
 
 function sprfnd(n)
@@ -368,7 +373,17 @@ function sprtbl(n)
 end
 
 function spr_init_board()
- spr_deckback()
+ if #sts.sto > 1 then
+  --multiple cards = stock
+  spr_sto(true)
+ elseif #sts.sto == 1 then
+  --single card placed here
+  local c = sts.sto[1]
+  spr_card(c.r, c.s, 2, 2)
+ else
+  --empty slot
+  spr_sto(false)
+ end
  for i=0,3 do
   sprfnd(i)
  end
@@ -432,8 +447,14 @@ function grab_cards()
   grab_from_tbl()
  elseif crs.area == "top" then
   if crs.top_pos == 0 then
-   --deal from stock
-   deal_sto()
+   if #sts.sto > 1 then
+    --deal from stock
+    deal_sto()
+   elseif #sts.sto == 1 then
+    --grab single card from stock slot
+    mv_cards(sts.sto, held, 1)
+    held_from = sts.sto
+   end
   elseif crs.top_pos == 1 then
    grab_from_waste()
   elseif crs.top_pos >= 2 then
