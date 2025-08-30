@@ -49,10 +49,24 @@ function _draw()
   end
  end
  
+ -- draw foundation cards
+ for i=1,4 do
+  local fnd = sts.fnd[i]
+  if #fnd > 0 then
+   local c = fnd[#fnd]--top card
+   local pad = 2
+   local offs= (pad + 16) * (i-1)
+   local x = 56 + offs
+   local y = 2
+   spr_card(c.r, c.s, x, y)
+  end
+ end
+ 
  -- show stock count
  if #sts.sto > 0 then
   print(#sts.sto, 6, 8, 7)
  end
+ 
  
  -- draw cursor
  draw_crs()
@@ -79,6 +93,8 @@ crs = {--vvv--(stock/waste/foundations)
 }
 
 sts = {}
+held = {} -- cards being held
+held_from = nil -- source stack
 anim = {
  active = false,
  tbl_i = 1, --curr. tableau (1-based)
@@ -199,6 +215,19 @@ function valid_tablu(st,cnt)
  
  --gone thru stack or range
  return true -- its valid
+end
+
+function valid_fnd(fnd,card)
+ --check if card can go on fnd
+ if #fnd == 0 then
+  --empty foundation
+  return card.r == RA --ace only
+ else
+  --must match suit & be +1
+  local top = fnd[#fnd]
+  return card.s == top.s and
+         card.r == top.r + 1
+ end
 end
 -->8
 -- tab2: draw
@@ -331,6 +360,116 @@ function spr_init_board()
  end
 end
 
+function mv_cards(from,to,cnt)
+ --blindly move cnt cards
+ for i=1,cnt do
+  local c = from[#from]
+  del(from, c)
+  add(to, c)--add to end
+ end
+end
+
+function grab_from_tbl()
+ --grab selected cards from tableau
+ local src = sts.tbl[crs.tbl_i]
+ if #src >= crs.sel_cnt then
+  mv_cards(src, held, crs.sel_cnt)
+  held_from = src
+  crs.sel_cnt = 1 --reset selection
+ end
+end
+
+function grab_from_waste()
+ --grab top card from waste pile
+ if #sts.waste > 0 then
+  mv_cards(sts.waste, held, 1)
+  held_from = sts.waste
+ end
+end
+
+function grab_from_fnd()
+ --grab top card from foundation
+ local fi = crs.top_pos - 1
+ local src = sts.fnd[fi]
+ if #src > 0 then
+  mv_cards(src, held, 1)
+  held_from = src
+ end
+end
+
+function grab_cards()
+ --dispatch based on cursor area
+ if crs.area == "tbl" then
+  grab_from_tbl()
+ elseif crs.area == "top" then
+  if crs.top_pos == 1 then
+   grab_from_waste()
+  elseif crs.top_pos >= 2 then
+   grab_from_fnd()
+  end
+ end
+end
+
+function place_on_tbl()
+ --place held cards on tableau
+ local dest=sts.tbl[crs.tbl_i]
+ local valid = false
+ 
+ if #dest == 0 then
+  --empty tableau accepts any
+  valid = true
+ else
+  --test combined stack validity
+  local test = {}
+  for c in all(dest) do
+   add(test, c)
+  end
+  for c in all(held) do
+   add(test, c)
+  end
+  valid=valid_tablu(test,#held+1)
+ end
+ 
+ if valid then
+  mv_cards(held, dest, #held)
+  held_from = nil
+ end
+end
+
+function place_on_stock()
+ --place single card on empty stock
+ if #sts.sto==0 and #held==1 then
+  mv_cards(held, sts.sto, 1)
+  held_from = nil
+ end
+end
+
+function place_on_fnd()
+ --place single card on foundation
+ local fi = crs.top_pos - 1
+ local dest = sts.fnd[fi]
+ 
+ if #held==1 and 
+    valid_fnd(dest,held[1]) 
+ then
+  mv_cards(held, dest, 1)
+  held_from = nil
+ end
+end
+
+function place_cards()
+ --dispatch based on cursor area
+ if crs.area == "tbl" then
+  place_on_tbl()
+ elseif crs.area == "top" then
+  if crs.top_pos == 0 then
+   place_on_stock()
+  elseif crs.top_pos >= 2 then
+   place_on_fnd()
+  end
+ end
+end
+
 -->8
 -- tab3: input
 
@@ -344,6 +483,23 @@ function update_crs()
   move_crs_up()
  elseif btnp(3) then -- down
   move_crs_down()
+ end
+ 
+ -- handle grab/place w/ O btn
+ if btnp(4) then
+  if #held > 0 then
+   place_cards()
+  else
+   grab_cards()
+  end
+ end
+ 
+ -- handle cancel w/ X btn
+ if btnp(5) and #held > 0 then
+  if held_from then
+   mv_cards(held, held_from, #held)
+   held_from = nil
+  end
  end
 end
 
