@@ -62,9 +62,26 @@ function _draw()
   end
  end
  
+ -- draw top 3 waste cards
+ if #sts.waste > 0 then
+  local start = max(1, #sts.waste - 2)
+  for i = start, #sts.waste do
+   local c = sts.waste[i]
+   local offset = (i - start) * 8
+   local x = 20 + offset
+   local y = 2
+   spr_card(c.r, c.s, x, y)
+  end
+ end
+ 
  -- show stock count
  if #sts.sto > 0 then
   print(#sts.sto, 6, 8, 7)
+ end
+ 
+ -- show waste count
+ if #sts.waste > 0 then
+  print(#sts.waste, 22, 10, 1)
  end
  
  
@@ -397,12 +414,27 @@ function grab_from_fnd()
  end
 end
 
+function deal_sto()
+ --deal 3 cards from stock to waste
+ if #sts.sto >= 3 then
+  for i=1,3 do
+   mv_cards(sts.sto, sts.waste, 1)
+  end
+ elseif #sts.sto > 0 then
+  --deal remaining cards
+  mv_cards(sts.sto, sts.waste, #sts.sto)
+ end
+end
+
 function grab_cards()
  --dispatch based on cursor area
  if crs.area == "tbl" then
   grab_from_tbl()
  elseif crs.area == "top" then
-  if crs.top_pos == 1 then
+  if crs.top_pos == 0 then
+   --deal from stock
+   deal_sto()
+  elseif crs.top_pos == 1 then
    grab_from_waste()
   elseif crs.top_pos >= 2 then
    grab_from_fnd()
