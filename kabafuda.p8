@@ -8,6 +8,10 @@ TABLU_Y = 28 --yofset tablu part
 CARD_STACK_DY = 8 --card stack offset
 WASTE_DX = 8 --waste card x offset
 
+-- ui messages
+ui_msg = ""
+ui_msg_timer = 0
+
 function _init()
  xoff_card = 16
  yoff_card = 24
@@ -31,6 +35,11 @@ function _update()
  -- ...after dealing is complete
  if not anim.active then
   update_crs()
+ end
+ 
+ -- update ui message timer
+ if ui_msg_timer > 0 then
+  ui_msg_timer -= 1
  end
 end
 
@@ -94,6 +103,9 @@ function _draw()
   end
   print(msg, 0, 112, 7)
  end
+ 
+ -- render ui messages
+ rend_dialog(ui_msg, 0, 120, ui_msg_timer)
  
 end
 
@@ -334,6 +346,12 @@ function grab_waste()
  mv_cards(sts.waste, held, 1)
  held_from = sts.waste
 end
+
+function place_on_stock()
+ mv_cards(held, sts.sto, #held)
+ held = {}
+ held_from = nil
+end
 -->8
 -- tab2: draw
 
@@ -392,6 +410,13 @@ function rend_held_cards(cards,x,y)
  end
  -- offset for visibility
  rend_card_st(cards, x-4, y-4)
+end
+
+function rend_dialog(msg,x,y,frames)
+ --render timed dialog message
+ if frames > 0 then
+  print(msg, x, y, 8)
+ end
 end
 
 function spr_st(st)
@@ -539,13 +564,16 @@ function update_crs()
     grab_waste()
    end
   else
-   -- placing (naive - anywhere)
-   -- just put held cards back for now
-   for i=1,#held do
-    add(held_from, held[i])
+   -- placing
+   if crs.area == "top" and 
+      crs.top_pos == 0 and 
+      can_place_sto() then
+    place_on_stock()
+   else
+    --TODO: better invalid gfx
+    ui_msg = "can't place here"
+    ui_msg_timer = 30 --1 second
    end
-   held = {}
-   held_from = nil
   end
  elseif btnp(5) then -- X button
   -- stub for now
