@@ -6,6 +6,7 @@ __lua__
 -- layout constants
 TABLU_Y = 28 --yofset tablu part
 CARD_STACK_DY = 8 --card stack offset
+WASTE_DX = 8 --waste card x offset
 
 function _init()
  xoff_card = 16
@@ -57,17 +58,8 @@ function _draw()
   end
  end
  
- -- draw top 3 waste cards
- if #sts.waste > 0 then
-  local start = max(1, #sts.waste - 2)
-  for i = start, #sts.waste do
-   local c = sts.waste[i]
-   local offset = (i - start) * 8
-   local x = 20 + offset
-   local y = 2
-   spr_card(c.r, c.s, x, y)
-  end
- end
+ -- render top 3 waste cards
+ rend_waste_cards(sts.waste, 20, 2)
  
  -- show stock count
  if #sts.sto > 1 then
@@ -331,6 +323,19 @@ function rend_card_st(cards,x,y,dy)
  for i=1,#cards do
   local c = cards[i]
   spr_card(c.r, c.s, x, y+(i-1)*dy)
+ end
+end
+
+function rend_waste_cards(cards,x,y)
+ --render waste pile (max 3 visible)
+ if not cards or #cards == 0 then
+  return
+ end
+ local start = max(1, #cards - 2)
+ for i = start, #cards do
+  local c = cards[i]
+  local dx = (i - start) * WASTE_DX
+  spr_card(c.r, c.s, x + dx, y)
  end
 end
 
