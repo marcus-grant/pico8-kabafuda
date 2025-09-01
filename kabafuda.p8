@@ -628,8 +628,8 @@ function move_crs_up()
   if #tbl == 0 then
    crs.area = "top"
    crs.top_pos = 0
-  else
-   --try to expand selection
+  elseif #held == 0 then
+   --try to expand selection (only when not holding)
    local new_cnt=crs.sel_cnt+1
    if new_cnt <= #tbl and 
       valid_tablu(tbl,new_cnt) 
@@ -641,6 +641,11 @@ function move_crs_up()
     crs.top_pos = 0
     crs.sel_cnt = 1
    end
+  else
+   --holding cards, go to top
+   crs.area = "top"
+   crs.top_pos = 0
+   crs.sel_cnt = 1
   end
  elseif crs.area == "top" then
   --wrap to tableau
