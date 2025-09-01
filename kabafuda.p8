@@ -21,6 +21,23 @@ ui_msg_timer = 0
 --   pros: simple, cons: more memory
 --question: does multi-undo make game too easy?
 
+--TODO: mouse support
+--detect mouse movement in play field
+--switch to mouse mode until btn pressed
+--show mouse cursor sprite in mouse mode
+--hide rect cursor in mouse mode
+--implement drag/drop using held[] state
+
+--TODO: pause menu & instructions
+--basic rules of kabafuda
+--input controls explanation
+--restart option in pause menu
+
+--TODO: satisfying game ending
+--animate cards leaving foundations
+--auto-restart after win
+--restart option accessible anytime
+
 function _init()
  xoff_card = 16
  yoff_card = 24
