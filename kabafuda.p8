@@ -41,7 +41,7 @@ function _draw()
  for i=1,7 do
   local tbl = sts.tbl[i]
   local x = 2 + (i-1) * 18
-  draw_card_stack(tbl, x, TABLU_Y)
+  rend_card_st(tbl, x, TABLU_Y)
  end
  
  -- draw foundation cards
@@ -81,7 +81,7 @@ function _draw()
  
  
  -- draw cursor
- draw_crs()
+ rend_crs()
  
  -- debug stock actions
  if crs.area == "top" and
@@ -323,8 +323,8 @@ function spr_card(rank,suit,x,y)
  spr(rbot+rank, x+8, y+16)
 end
 
-function draw_card_stack(cards,x,y,dy)
- --draw vertical stack of cards
+function rend_card_st(cards,x,y,dy)
+ --render vertical stack of cards
  --dy = vertical offset per card
  if not cards then return end
  dy = dy or CARD_STACK_DY
@@ -573,7 +573,7 @@ function move_crs_down()
  end
 end
 
-function draw_crs()
+function rend_crs()
  --TODO: replace rect with
  --cursor sprite when avail.
  --draws expanding cursor
