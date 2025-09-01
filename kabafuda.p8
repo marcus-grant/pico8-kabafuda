@@ -352,6 +352,38 @@ function place_on_stock()
  held = {}
  held_from = nil
 end
+
+function grab_from_tbl()
+ local tbl = sts.tbl[crs.tbl_i]
+ mv_cards(tbl, held, crs.sel_cnt)
+ held_from = tbl
+ crs.sel_cnt = 1 --reset selection
+end
+
+function can_place_tbl(ti)
+ --can place held on tableau ti?
+ if #held == 0 then
+  return false
+ end
+ local tbl = sts.tbl[ti]
+ if #tbl == 0 then
+  return true --empty accepts any
+ end
+ --check bottom held vs top tbl
+ local top_card = tbl[#tbl]
+ local bot_card = held[1]
+ 
+ return valid_pair(top_card, bot_card)
+end
+
+function place_on_tbl(ti)
+ --TODO: optimize place_* funcs
+ --lots of duplicate logic
+ local tbl = sts.tbl[ti]
+ mv_cards(held, tbl, #held)
+ held = {}
+ held_from = nil
+end
 -->8
 -- tab2: draw
 
@@ -562,6 +594,8 @@ function update_crs()
     grab_deal_sto()
    elseif crs.area == "top" and crs.top_pos == 1 and #sts.waste > 0 then
     grab_waste()
+   elseif crs.area == "tbl" then
+    grab_from_tbl()
    end
   else
    -- placing
@@ -569,6 +603,13 @@ function update_crs()
       crs.top_pos == 0 and 
       can_place_sto() then
     place_on_stock()
+   elseif crs.area == "tbl" then
+    if can_place_tbl(crs.tbl_i) then
+     place_on_tbl(crs.tbl_i)
+    else
+     ui_msg = "can't place here"
+     ui_msg_timer = 30
+    end
    else
     --TODO: better invalid gfx
     ui_msg = "can't place here"
