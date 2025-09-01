@@ -294,6 +294,46 @@ function can_place_sto()
  --only when empty and 1 card held
  return #sts.sto == 0 and #held == 1
 end
+
+function can_grab_here()
+ --can grab from current cursor pos?
+ if #held > 0 then
+  return false --already holding
+ end
+ 
+ if crs.area == "top" then
+  if crs.top_pos == 0 then
+   --stock: can deal or grab single
+   return #sts.sto > 0
+  elseif crs.top_pos == 1 then
+   --waste: can grab top card
+   return #sts.waste > 0
+  else
+   --foundation: can grab top card
+   local fi = crs.top_pos - 1
+   return #sts.fnd[fi] > 0
+  end
+ else
+  --tableau: can grab selected cards
+  local tbl = sts.tbl[crs.tbl_i]
+  return crs.sel_cnt <= #tbl and #tbl > 0
+ end
+end
+
+function grab_deal_sto()
+ if #sts.sto > 1 then
+  deal_sto()
+ else
+  mv_cards(sts.sto, held, 1)
+  held_from = sts.sto
+ end
+end
+
+--DELETEME: temp testing function
+function grab_waste()
+ mv_cards(sts.waste, held, 1)
+ held_from = sts.waste
+end
 -->8
 -- tab2: draw
 
@@ -491,16 +531,21 @@ function update_crs()
  
  -- handle grab/place buttons
  if btnp(4) then -- O button
-  -- special case: stock dealing
-  if crs.area == "top" and 
-     crs.top_pos == 0 then
-   if #sts.sto > 1 then
-    deal_sto()
-   elseif #sts.sto == 1 then
-    printh("would grab single card from stock")
-   else
-    printh("would place card on empty stock")
+  if #held == 0 then
+   -- grabbing
+   if crs.area == "top" and crs.top_pos == 0 then
+    grab_deal_sto()
+   elseif crs.area == "top" and crs.top_pos == 1 and #sts.waste > 0 then
+    grab_waste()
    end
+  else
+   -- placing (naive - anywhere)
+   -- just put held cards back for now
+   for i=1,#held do
+    add(held_from, held[i])
+   end
+   held = {}
+   held_from = nil
   end
  elseif btnp(5) then -- X button
   -- stub for now
