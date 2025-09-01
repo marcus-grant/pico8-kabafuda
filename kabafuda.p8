@@ -491,6 +491,11 @@ function move_crs_left()
   crs.sel_cnt = 1
  elseif crs.area == "top" then
   crs.top_pos -= 1
+  --skip empty waste (pos 1)
+  if crs.top_pos == 1 and
+     #sts.waste == 0 then
+   crs.top_pos = 0
+  end
   if crs.top_pos < 0 then
    crs.top_pos = 0
   end
@@ -507,6 +512,11 @@ function move_crs_right()
   crs.sel_cnt = 1
  elseif crs.area == "top" then
   crs.top_pos += 1
+  --skip empty waste (pos 1)
+  if crs.top_pos == 1 and
+     #sts.waste == 0 then
+   crs.top_pos = 2
+  end
   if crs.top_pos > 5 then
    crs.top_pos = 5
   end
@@ -581,7 +591,14 @@ function get_crs_pos()
    return 2, 2
   elseif crs.top_pos == 1 then
    --waste pos. (next to stock)
-   return 20, 2
+   local waste_cnt = #sts.waste
+   local x_offset = 0
+   if waste_cnt >= 3 then
+    x_offset = 16
+   elseif waste_cnt == 2 then
+    x_offset = 8
+   end
+   return 20 + x_offset, 2
   else
    -- foundation position
    -- (2-5 to foundations 1-4)
