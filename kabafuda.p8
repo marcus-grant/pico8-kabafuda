@@ -88,6 +88,20 @@ function _draw()
  -- draw cursor
  draw_crs()
  
+ -- debug stock actions
+ if crs.area == "top" and
+    crs.top_pos == 0 then
+  local msg = ""
+  if #sts.sto > 1 then
+   msg = "press o: deal 3"
+  elseif #sts.sto == 1 then
+   msg = "press o: grab 1"
+  else
+   msg = "press o: place here"
+  end
+  print(msg, 0, 112, 7)
+ end
+ 
 end
 
 -->8
@@ -250,6 +264,42 @@ function valid_fnd(fnd,card)
   return card.s == top.s and
          card.r == top.r + 1
  end
+end
+
+function mv_cards(from,to,cnt)
+ --move cnt cards from->to
+ --maintains order (top to top)
+ cnt = cnt or 1
+ local start = #from - cnt + 1
+ for i=start,#from do
+  if from[i] then
+   add(to, from[i])
+  end
+ end
+ --remove from source
+ for i=1,cnt do
+  del(from, from[#from])
+ end
+end
+
+function deal_sto()
+ --deal 3 cards from stock to waste
+ local to_deal = min(3, #sts.sto)
+ if to_deal > 0 then
+  mv_cards(sts.sto, sts.waste, to_deal)
+ end
+end
+
+function can_grab_sto()
+ --can we grab from stock position?
+ --only when 1 card (empty slot mode)
+ return #sts.sto == 1
+end
+
+function can_place_sto()
+ --can place on stock position?
+ --only when empty and 1 card held
+ return #sts.sto == 0 and #held == 1
 end
 -->8
 -- tab2: draw
@@ -415,13 +465,19 @@ function update_crs()
  
  -- handle grab/place buttons
  if btnp(4) then -- O button
-  if #held == 0 then
-   grab_cards()
-  else
-   place_cards()
+  -- special case: stock dealing
+  if crs.area == "top" and 
+     crs.top_pos == 0 then
+   if #sts.sto > 1 then
+    deal_sto()
+   elseif #sts.sto == 1 then
+    printh("would grab single card from stock")
+   else
+    printh("would place card on empty stock")
+   end
   end
  elseif btnp(5) then -- X button
-  cancel_action()
+  -- stub for now
  end
 end
 
