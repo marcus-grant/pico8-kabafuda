@@ -92,7 +92,7 @@ function _draw()
  
  -- debug stock actions
  if crs.area == "top" and
-    crs.top_pos == 0 then
+    crs.top_pos == 1 then
   local msg = ""
   if #sts.sto > 1 then
    msg = "press o: deal 3"
@@ -125,7 +125,7 @@ crs = {--vvv--(stock/waste/foundations)
  area = "tbl",--tbl|top ^^^
  tbl_i = 1,   --which tableau(1-7)
  sel_cnt = 1, --cards selected from top
- top_pos = 0, --0=stock, 1=waste, 2-5=foundations
+ top_pos = 1, --1=stock, 2=waste, 3-6=foundations
  selected = false--card sel?
 }
 
@@ -318,15 +318,15 @@ function can_grab_here()
  end
  
  if crs.area == "top" then
-  if crs.top_pos == 0 then
+  if crs.top_pos == 1 then
    --stock: can deal or grab single
    return #sts.sto > 0
-  elseif crs.top_pos == 1 then
+  elseif crs.top_pos == 2 then
    --waste: can grab top card
    return #sts.waste > 0
   else
    --foundation: can grab top card
-   local fi = crs.top_pos - 1
+   local fi = crs.top_pos - 2
    return #sts.fnd[fi] > 0
   end
  else
@@ -374,20 +374,20 @@ end
 
 function grab_from_top()
  --handle all top area grabs
- if crs.top_pos == 0 then
+ if crs.top_pos == 1 then
   grab_deal_sto()
   return
  end
  
- if crs.top_pos == 1 then
+ if crs.top_pos == 2 then
   if #sts.waste > 0 then
    grab_waste()
   end
   return
  end
  
- --foundation (pos 2-5)
- local fi = crs.top_pos - 1
+ --foundation (pos 3-6)
+ local fi = crs.top_pos - 2
  if #sts.fnd[fi] > 0 then
   grab_from_fnd(fi)
  end
@@ -436,7 +436,7 @@ end
 
 function place_on_top()
  --handle all top area placements
- if crs.top_pos == 0 then
+ if crs.top_pos == 1 then
   if can_place_sto() then
    place_on_stock()
    return true
@@ -444,12 +444,12 @@ function place_on_top()
   return false
  end
  
- if crs.top_pos == 1 then
+ if crs.top_pos == 2 then
   return false --can't place on waste
  end
  
- --foundation (pos 2-5)
- local fi = crs.top_pos - 1
+ --foundation (pos 3-6)
+ local fi = crs.top_pos - 2
  if can_place_fnd(fi) then
   place_on_fnd(fi)
   return true
@@ -702,13 +702,13 @@ function move_crs_left()
   crs.sel_cnt = 1
  elseif crs.area == "top" then
   crs.top_pos -= 1
-  --skip empty waste (pos 1)
-  if crs.top_pos == 1 and
+  --skip empty waste (pos 2)
+  if crs.top_pos == 2 and
      #sts.waste == 0 then
-   crs.top_pos = 0
+   crs.top_pos = 1
   end
-  if crs.top_pos < 0 then
-   crs.top_pos = 5 --wrap to rightmost
+  if crs.top_pos < 1 then
+   crs.top_pos = 6 --wrap to rightmost
   end
  end
 end
@@ -723,13 +723,13 @@ function move_crs_right()
   crs.sel_cnt = 1
  elseif crs.area == "top" then
   crs.top_pos += 1
-  --skip empty waste (pos 1)
-  if crs.top_pos == 1 and
+  --skip empty waste (pos 2)
+  if crs.top_pos == 2 and
      #sts.waste == 0 then
-   crs.top_pos = 2
+   crs.top_pos = 3
   end
-  if crs.top_pos > 5 then
-   crs.top_pos = 0 --wrap to leftmost
+  if crs.top_pos > 6 then
+   crs.top_pos = 1 --wrap to leftmost
   end
  end
 end
@@ -739,7 +739,7 @@ function move_crs_up()
   local tbl=sts.tbl[crs.tbl_i]
   if #tbl == 0 then
    crs.area = "top"
-   crs.top_pos = 0
+   crs.top_pos = 1
   elseif #held == 0 then
    --try to expand selection (only when not holding)
    local new_cnt=crs.sel_cnt+1
@@ -750,13 +750,13 @@ function move_crs_up()
    else
     --can't expand,move to top
     crs.area = "top"
-    crs.top_pos = 0
+    crs.top_pos = 1
     crs.sel_cnt = 1
    end
   else
    --holding cards, go to top
    crs.area = "top"
-   crs.top_pos = 0
+   crs.top_pos = 1
    crs.sel_cnt = 1
   end
  elseif crs.area == "top" then
@@ -804,10 +804,10 @@ end
 
 function get_crs_pos()
  if crs.area == "top" then
-  if crs.top_pos == 0 then
+  if crs.top_pos == 1 then
    -- stock position
    return 2, 2
-  elseif crs.top_pos == 1 then
+  elseif crs.top_pos == 2 then
    --waste pos. (next to stock)
    local waste_cnt = #sts.waste
    local x_offset = 0
@@ -819,10 +819,10 @@ function get_crs_pos()
    return 20 + x_offset, 2
   else
    -- foundation position
-   -- (2-5 to foundations 1-4)
+   -- (3-6 to foundations 1-4)
    local fnd_i = crs.top_pos - 2
    local pad = 2
-   local offs = (pad+16) * fnd_i
+   local offs = (pad+16) * (fnd_i - 1)
    return 56 + offs, 2
   end
  else
