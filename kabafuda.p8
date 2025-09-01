@@ -739,7 +739,14 @@ function move_crs_up()
   local tbl=sts.tbl[crs.tbl_i]
   if #tbl == 0 then
    crs.area = "top"
-   crs.top_pos = 1
+   --map empty tbl to nearest
+   if crs.tbl_i == 1 then
+    crs.top_pos = 1 -- 1→stock
+   elseif crs.tbl_i <= 3 then
+    crs.top_pos = 2 -- 2,3→waste
+   else
+    crs.top_pos = crs.tbl_i - 1 -- 4→3,5→4,6→5,7→6
+   end
   elseif #held == 0 then
    --try to expand selection (only when not holding)
    local new_cnt=crs.sel_cnt+1
@@ -750,18 +757,40 @@ function move_crs_up()
    else
     --can't expand,move to top
     crs.area = "top"
-    crs.top_pos = 1
+    --map tbl to nearest top pos
+    if crs.tbl_i == 1 then
+     crs.top_pos = 1 -- 1→stock
+    elseif crs.tbl_i <= 3 then
+     crs.top_pos = 2 -- 2,3→waste
+    else
+     crs.top_pos = crs.tbl_i - 1 -- 4→3,5→4,6→5,7→6
+    end
     crs.sel_cnt = 1
    end
   else
    --holding cards, go to top
    crs.area = "top"
-   crs.top_pos = 1
+   --same mapping when holding
+   if crs.tbl_i == 1 then
+    crs.top_pos = 1 -- 1→stock
+   elseif crs.tbl_i <= 3 then
+    crs.top_pos = 2 -- 2,3→waste
+   else
+    crs.top_pos = crs.tbl_i - 1 -- 4→3,5→4,6→5,7→6
+   end
    crs.sel_cnt = 1
   end
  elseif crs.area == "top" then
-  --wrap to tableau
+  --wrap to tableau bottom
   crs.area = "tbl"
+  --map top to nearest tbl
+  if crs.top_pos == 1 then
+   crs.tbl_i = 1 -- stock→1
+  elseif crs.top_pos == 2 then
+   crs.tbl_i = 2 -- waste→2
+  else
+   crs.tbl_i = crs.top_pos + 1 -- 3→4,4→5,5→6,6→7
+  end
   crs.sel_cnt = 1
  end
 end
@@ -771,15 +800,32 @@ function move_crs_down()
  --would be closer visually 
  if crs.area == "top" then
   crs.area = "tbl"
+  -- map top pos to closest tbl
+  if crs.top_pos == 1 then
+   crs.tbl_i = 1 -- stock→1
+  elseif crs.top_pos == 2 then
+   crs.tbl_i = 2 -- waste→2 (or 3)
+  else
+   crs.tbl_i = crs.top_pos + 1 -- 3→4,4→5,5→6,6→7
+  end
   local tbl = sts.tbl[crs.tbl_i]
   crs.sel_cnt = 1
  elseif crs.area == "tbl" then
   local tbl = sts.tbl[crs.tbl_i]
-  if #tbl == 0 then
-   return
-  end
-  --reduce selection to 1
-  if crs.sel_cnt > 1 then
+  if #tbl == 0 or crs.sel_cnt == 1 then
+   --wrap to top when at bottom
+   crs.area = "top"
+   --map tbl to nearest top pos
+   if crs.tbl_i == 1 then
+    crs.top_pos = 1 -- 1→stock
+   elseif crs.tbl_i <= 3 then
+    crs.top_pos = 2 -- 2,3→waste
+   else
+    crs.top_pos = crs.tbl_i - 1 -- 4→3,5→4,6→5,7→6
+   end
+   crs.sel_cnt = 1
+  else
+   --reduce selection
    crs.sel_cnt -= 1
   end
  end
