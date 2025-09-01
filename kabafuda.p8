@@ -258,16 +258,20 @@ function valid_tablu(st, cnt)
  return valid_seq(st, #st, cnt)
 end
 
-function valid_fnd(fnd,card)
- --check if card can go on fnd
+function valid_fnd(fnd,c)
+ --check if card c can go on fnd
  if #fnd == 0 then
   --empty foundation
-  return card.r == RA --ace only
- else
-  --must match suit & be +1
+  return c.r == RA --ace only
+ elseif #fnd == 1 then
+  --ace on fnd, need 2
   local top = fnd[#fnd]
-  return card.s == top.s and
-         card.r == top.r + 1
+  return c.s == top.s and c.r == R2
+ else
+  --normal sequence
+  local top = fnd[#fnd]
+  return c.s == top.s and
+         c.r == top.r + 1
  end
 end
 
@@ -360,6 +364,35 @@ function grab_from_tbl()
  crs.sel_cnt = 1 --reset selection
 end
 
+function grab_from_fnd(fi)
+ --grab top card from foundation fi
+ --TODO: optimize grab_* funcs
+ local fnd = sts.fnd[fi]
+ mv_cards(fnd, held, 1)
+ held_from = fnd
+end
+
+function grab_from_top()
+ --handle all top area grabs
+ if crs.top_pos == 0 then
+  grab_deal_sto()
+  return
+ end
+ 
+ if crs.top_pos == 1 then
+  if #sts.waste > 0 then
+   grab_waste()
+  end
+  return
+ end
+ 
+ --foundation (pos 2-5)
+ local fi = crs.top_pos - 1
+ if #sts.fnd[fi] > 0 then
+  grab_from_fnd(fi)
+ end
+end
+
 function can_place_tbl(ti)
  --can place held on tableau ti?
  if #held == 0 then
@@ -383,6 +416,45 @@ function place_on_tbl(ti)
  mv_cards(held, tbl, #held)
  held = {}
  held_from = nil
+end
+
+function can_place_fnd(fi)
+ --can place held on foundation fi?
+ if #held != 1 then
+  return false --only single cards
+ end
+ return valid_fnd(sts.fnd[fi], held[1])
+end
+
+function place_on_fnd(fi)
+ --TODO: optimize place_* funcs
+ local fnd = sts.fnd[fi]
+ mv_cards(held, fnd, #held)
+ held = {}
+ held_from = nil
+end
+
+function place_on_top()
+ --handle all top area placements
+ if crs.top_pos == 0 then
+  if can_place_sto() then
+   place_on_stock()
+   return true
+  end
+  return false
+ end
+ 
+ if crs.top_pos == 1 then
+  return false --can't place on waste
+ end
+ 
+ --foundation (pos 2-5)
+ local fi = crs.top_pos - 1
+ if can_place_fnd(fi) then
+  place_on_fnd(fi)
+  return true
+ end
+ return false
 end
 -->8
 -- tab2: draw
@@ -590,19 +662,18 @@ function update_crs()
  if btnp(4) then -- O button
   if #held == 0 then
    -- grabbing
-   if crs.area == "top" and crs.top_pos == 0 then
-    grab_deal_sto()
-   elseif crs.area == "top" and crs.top_pos == 1 and #sts.waste > 0 then
-    grab_waste()
+   if crs.area == "top" then
+    grab_from_top() --handles stock/waste/fnd
    elseif crs.area == "tbl" then
     grab_from_tbl()
    end
   else
    -- placing
-   if crs.area == "top" and 
-      crs.top_pos == 0 and 
-      can_place_sto() then
-    place_on_stock()
+   if crs.area == "top" then
+    if not place_on_top() then
+     ui_msg = "can't place here"
+     ui_msg_timer = 30
+    end
    elseif crs.area == "tbl" then
     if can_place_tbl(crs.tbl_i) then
      place_on_tbl(crs.tbl_i)
