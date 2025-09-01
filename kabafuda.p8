@@ -12,6 +12,15 @@ WASTE_DX = 8 --waste card x offset
 ui_msg = ""
 ui_msg_timer = 0
 
+--TODO: implement deeper undo system
+--options:
+--1. move-based: store inverse operations
+--   {type="grab",src=waste,cnt=1} etc.
+--   pros: tiny memory, cons: complex logic
+--2. state snapshots: 3-5 full board states  
+--   pros: simple, cons: more memory
+--question: does multi-undo make game too easy?
+
 function _init()
  xoff_card = 16
  yoff_card = 24
@@ -688,7 +697,14 @@ function update_crs()
    end
   end
  elseif btnp(5) then -- X button
-  -- stub for now
+  if #held > 0 and held_from then
+   --return held cards to source
+   for i=1,#held do
+    add(held_from, held[i])
+   end
+   held = {}
+   held_from = nil
+  end
  end
 end
 
