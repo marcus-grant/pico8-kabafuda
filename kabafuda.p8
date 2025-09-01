@@ -5,6 +5,7 @@ __lua__
 
 -- layout constants
 TABLU_Y = 28 --yofset tablu part
+CARD_STACK_DY = 8 --card stack offset
 
 function _init()
  xoff_card = 16
@@ -39,14 +40,8 @@ function _draw()
  -- draw dealt cards in tableaux
  for i=1,7 do
   local tbl = sts.tbl[i]
-  if #tbl > 0 then
-   for j=1,#tbl do
-    local c = tbl[j]--tbl card
-    local x = 2 + (i-1) * 18
-    local y=TABLU_Y+((j-1) << 3)
-    spr_card(c.r, c.s, x, y)
-   end
-  end
+  local x = 2 + (i-1) * 18
+  draw_card_stack(tbl, x, TABLU_Y)
  end
  
  -- draw foundation cards
@@ -326,6 +321,17 @@ function spr_card(rank,suit,x,y)
  spr(31,        x+8, y+8)
  spr(sbase+16,  x,   y+16)
  spr(rbot+rank, x+8, y+16)
+end
+
+function draw_card_stack(cards,x,y,dy)
+ --draw vertical stack of cards
+ --dy = vertical offset per card
+ if not cards then return end
+ dy = dy or CARD_STACK_DY
+ for i=1,#cards do
+  local c = cards[i]
+  spr_card(c.r, c.s, x, y+(i-1)*dy)
+ end
 end
 
 function spr_st(st)
