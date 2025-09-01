@@ -75,6 +75,12 @@ function _draw()
  -- draw cursor
  rend_crs()
  
+ -- render held cards
+ if #held > 0 then
+  local x, y = get_crs_pos()
+  rend_held_cards(held, x, y)
+ end
+ 
  -- debug stock actions
  if crs.area == "top" and
     crs.top_pos == 0 then
@@ -337,6 +343,15 @@ function rend_waste_cards(cards,x,y)
   local dx = (i - start) * WASTE_DX
   spr_card(c.r, c.s, x + dx, y)
  end
+end
+
+function rend_held_cards(cards,x,y)
+ --render cards being held/moved
+ if not cards or #cards == 0 then
+  return
+ end
+ -- offset for visibility
+ rend_card_st(cards, x-4, y-4)
 end
 
 function spr_st(st)
