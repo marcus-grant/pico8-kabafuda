@@ -696,7 +696,7 @@ function move_crs_left()
  if crs.area == "tbl" then
   crs.tbl_i -= 1
   if crs.tbl_i < 1 then
-   crs.tbl_i = 1
+   crs.tbl_i = 7 --wrap to rightmost
   end
   local tbl = sts.tbl[crs.tbl_i]
   crs.sel_cnt = 1
@@ -708,7 +708,7 @@ function move_crs_left()
    crs.top_pos = 0
   end
   if crs.top_pos < 0 then
-   crs.top_pos = 0
+   crs.top_pos = 5 --wrap to rightmost
   end
  end
 end
@@ -717,7 +717,7 @@ function move_crs_right()
  if crs.area == "tbl" then
   crs.tbl_i += 1
   if crs.tbl_i > 7 then
-   crs.tbl_i = 7
+   crs.tbl_i = 1 --wrap to leftmost
   end
   local tbl = sts.tbl[crs.tbl_i]
   crs.sel_cnt = 1
@@ -729,7 +729,7 @@ function move_crs_right()
    crs.top_pos = 2
   end
   if crs.top_pos > 5 then
-   crs.top_pos = 5
+   crs.top_pos = 0 --wrap to leftmost
   end
  end
 end
@@ -767,6 +767,8 @@ function move_crs_up()
 end
 
 function move_crs_down()
+ --TODO: map waste->tbl2 when waste<3 cards
+ --would be closer visually 
  if crs.area == "top" then
   crs.area = "tbl"
   local tbl = sts.tbl[crs.tbl_i]
