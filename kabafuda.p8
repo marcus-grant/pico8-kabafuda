@@ -545,7 +545,7 @@ end
 function rend_dialog(msg,x,y,frames)
  --render timed dialog message
  if frames > 0 then
-  print(msg, x, y, 8)
+  print(msg, x, y, 14)
  end
 end
 
@@ -567,53 +567,9 @@ function spr_st(st)
 	spr_card(c.r,c.s,x,y)
 	x += 16
  end
- msg = "num cards: "
- msg = msg..#sts.sto
- print(msg,8,104,4)
 end
 
-function strcard(card)
- if card.r < 10 then
-  txt = tostr(card.r)
- elseif card.r == R10 then
-  txt = "0"
- elseif card.r == RJ then
-  txt = "j"
- elseif card.r == RQ then
-  txt = "q"
- elseif card.r == RK then
-  txt = "k"
- elseif card.r == RA then
-  txt = "a"
- else
-  txt = "bad"
- end
- if card.s == HRT then
-  txt = txt.."h"
- elseif card.s == SPD then
-  txt = txt.."s"
- elseif card.s == DIA then
-  txt = txt.."d"
- elseif card.s == CLB then
-  txt = txt.."c"
- else
-  txt = txt.."!"
- end
- return txt
-end
 
-function print_st(st)
- pt = {0, 0}
- for c in all(st) do
-  msg = strcard(c)
-  print(msg, pt[1], pt[2])
-  pt[1] += 16
-  if pt[1] >= 128 then
-   pt[1] = 0
-   pt[2] += 16
-  end
- end
-end
 
 function spr_sto(is_sto)
  --Draw stock area sprite
