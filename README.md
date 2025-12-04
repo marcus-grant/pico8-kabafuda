@@ -3,6 +3,12 @@
 A unique solitaire card game for PICO-8, based on the addictive Kabafuda
 Solitaire variant from Zachtronics' Last Call BBS.
 
+## Distribution Files
+
+- **kabafuda.p8** - Single-file merged cartridge for distribution
+- **main.p8** - Source cartridge with modular includes for development
+- **\*.lua** - Individual module files (cards, input, rendering, validation, auto-moves)
+
 ## Game Rules
 
 ### Objective
@@ -27,6 +33,30 @@ King in a single suit.
 - Must draw 3 cards at a time from stock
 - Only the top card of waste pile is playable
 - Empty tableau columns can be filled with any King
+
+## Controls
+
+- **D-Pad**: Move cursor between game areas
+- **Up/Down**: Select cards in tableau (when not holding)
+- **O Button**: Grab/place cards
+- **X Button**: Return held cards to source
+
+## Development
+
+The project uses a modular structure for development:
+
+1. **main.p8** - Main entry point with `#include` statements
+2. **\*.lua files** - Individual modules for different game systems
+3. **kabafuda.p8** - Merged single-file version created with `picomerge`
+
+To rebuild the distribution file:
+```bash
+picomerge main.p8 kabafuda.p8
+```
+
+### Auto-merge Tool
+
+This project uses [picomerge](https://github.com/0xcafed00d/picomerge) to automatically merge the modular source files into a single cartridge for distribution.
 
 ## Acknowledgements
 
